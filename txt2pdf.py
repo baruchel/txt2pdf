@@ -64,6 +64,8 @@ parser.add_argument('--kerning', '-k', nargs=1,
                    help='Extra horizontal space between characters')
 parser.add_argument('--media', '-m', nargs=1,
                    help='Select the size of the page (A4, A3, etc.)')
+parser.add_argument('--landscape', '-ls', action="store_true", default=False,
+                   help='Select landscape mode')
 parser.add_argument('--margin-left', '-l', nargs=1,
                    help='Left margin (in cm unit)')
 parser.add_argument('--margin-right', '-r', nargs=1,
@@ -85,6 +87,9 @@ if args.media:
   myPageSize = eval("reportlab.lib.pagesizes." + args.media[0])
 else:
   myPageSize = reportlab.lib.pagesizes.A4
+
+if args.landscape:
+    myPageSize = reportlab.lib.pagesizes.landscape(myPageSize)
 
 if args.margin_left:
   mLeft = float(args.margin_left[0])*cm
