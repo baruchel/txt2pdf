@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import argparse
-
 import reportlab.lib.pagesizes
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib import units
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import sys
+import os
 
 
 class Margins(object):
@@ -58,72 +59,69 @@ class PDFCreator(object):
             self.font = args.font
         self.kerning = args.kerning
         self.margins = margins
-
-        width = pageWidth - margins.left - margins.right
-        w = self.canvas.stringWidth(
+        contentWidth = pageWidth - margins.left - margins.right
+        stringWidth = self.canvas.stringWidth(
             ".", fontName=self.font, fontSize=self.fontSize)
-        charsPerLine = int((width + self.kerning) / (w + self.kerning))
-        self.leading = self._leading(args.extra_vertical_space)
+        self.charsPerLine = int(
+            (contentWidth + self.kerning) / (stringWidth + self.kerning))
+        self.top = pageHeight - margins.top - self.fontSize
+        self.leading = (args.extra_vertical_space + 1.2) * self.fontSize
+        self.linesPerPage = int(
+            (self.leading + pageHeight
+             - margins.top - margins.bottom - self.fontSize) / self.leading)
+        self.filename = args.filename
+        self.verbose = not args.quiet
 
-        top = pageHeight - margins.top - self.fontSize
-        if self.leading:
-            linesPerPage = int(
-                (self.leading + pageHeight - margins.top - margins.bottom - self.fontSize) / leading)
-        else:
-            linesPerPage = int(
-                (1.2*self.fontSize + pageHeight - margins.top - margins.bottom - self.fontSize) / (1.2*self.fontSize))
-
-        print(
-            "Printing '%s' with %d characters per line and %d lines per page..." %
-            (args.filename, charsPerLine, linesPerPage)
-        )
-
-        self.document(
-            self.readDocument(args.filename, charsPerLine), top, linesPerPage)
-
-    def _leading(self, extraVerticalSpace):
-        if extraVerticalSpace:
-            return (float(args.extra_vertical_space) + 1.2) * self.fontSize
-        return None
-
-    def readDocument(self, infile, maxCharsPerLine):
-        with open(infile, 'r') as data:
+    def _readDocument(self):
+        with open(self.filename, 'r') as data:
             lineno = 0
             for line in data:
                 line = line.decode('utf8').rstrip('\r\n')
                 lineno += 1
-                if len(line) > maxCharsPerLine:
-                    print("Warning: wrapping line %d in %s" % (lineno, infile))
-                    while len(line) > maxCharsPerLine:
-                        yield line[:maxCharsPerLine]
-                        line = line[maxCharsPerLine:]
+                if len(line) > self.charsPerLine:
+                    self._scribble(
+                        "Warning: wrapping line %d in %s" %
+                        (lineno + 1, self.filename))
+                    while len(line) > self.charsPerLine:
+                        yield line[:self.charsPerLine]
+                        line = line[self.charsPerLine:]
                 yield line
 
-    def newpage(self, top):
+    def _newpage(self):
         textobject = self.canvas.beginText()
         textobject.setFont(self.font, self.fontSize, leading=self.leading)
-        textobject.setTextOrigin(self.margins.left, top)
+        textobject.setTextOrigin(self.margins.left, self.top)
         textobject.setCharSpace(self.kerning)
         return textobject
 
-    def document(self, data, top, lpp):
+    def _scribble(self, text):
+        if self.verbose:
+            sys.stderr.write(text + os.linesep)
+
+    def generate(self):
+        self._scribble(
+            "Writing '%s' with %d characters per "
+            "line and %d lines per page..." %
+            (self.filename, self.charsPerLine, self.linesPerPage)
+        )
+        data = self._readDocument()
         page, l = 1, 0
-        t = self.newpage(top)
+        t = self._newpage()
         for line in data:
             t.textLine(line)
             l += 1
-            if l == lpp:
+            if l == self.linesPerPage:
                 self.canvas.drawText(t)
                 self.canvas.showPage()
                 l = 0
                 page += 1
-                t = self.newpage(top)
+                t = self._newpage()
         if l > 0:
             self.canvas.drawText(t)
         else:
             page -= 1
         self.canvas.save()
-        print("PDF document: " + str(page) + " pages")
+        self._scribble("PDF document: %d pages" % page)
 
 
 parser = argparse.ArgumentParser()
@@ -132,7 +130,7 @@ parser.add_argument('--font', '-f', default='Courier',
                     help='Select a font (True Type format) by its full path')
 parser.add_argument('--font-size', '-s', type=float, default=10.0,
                     help='Size of the font')
-parser.add_argument('--extra-vertical-space', '-v',
+parser.add_argument('--extra-vertical-space', '-v', type=float, default=0.0,
                     help='Extra vertical space between lines')
 parser.add_argument('--kerning', '-k', type=float, default=0.0,
                     help='Extra horizontal space between characters')
@@ -154,6 +152,8 @@ parser.add_argument('--author', default='',
                     help='Author of the PDF document')
 parser.add_argument('--title', default='',
                     help='Title of the PDF document')
+parser.add_argument('--quiet', '-q', action='store_true', default=False,
+                    help='Title of the PDF document')
 
 args = parser.parse_args()
 
@@ -161,4 +161,4 @@ PDFCreator(args, Margins(
     args.margin_right,
     args.margin_left,
     args.margin_top,
-    args.margin_bottom))
+    args.margin_bottom)).generate()
