@@ -136,15 +136,15 @@ parser.add_argument('--kerning', '-k', type=float, default=0.0,
                     help='Extra horizontal space between characters')
 parser.add_argument('--media', '-m', default='A4',
                     help='Select the size of the page (A4, A3, etc.)')
-parser.add_argument('--landscape', '-ls', action="store_true", default=False,
+parser.add_argument('--landscape', '-l', action="store_true", default=False,
                     help='Select landscape mode')
-parser.add_argument('--margin-left', '-l', type=float, default=2.0,
+parser.add_argument('--margin-left', '-L', type=float, default=2.0,
                     help='Left margin (in cm unit)')
-parser.add_argument('--margin-right', '-r', type=float, default=2.0,
+parser.add_argument('--margin-right', '-R', type=float, default=2.0,
                     help='Right margin (in cm unit)')
-parser.add_argument('--margin-top', '-t', type=float, default=2.0,
+parser.add_argument('--margin-top', '-T', type=float, default=2.0,
                     help='Top margin (in cm unit)')
-parser.add_argument('--margin-bottom', '-b', type=float, default=2.0,
+parser.add_argument('--margin-bottom', '-B', type=float, default=2.0,
                     help='Bottom margin (in cm unit)')
 parser.add_argument('--output', '-o', default='output.pdf',
                     help='Output file')
