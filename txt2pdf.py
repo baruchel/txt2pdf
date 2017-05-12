@@ -105,23 +105,24 @@ class PDFCreator(object):
             (self.filename, self.charsPerLine, self.linesPerPage)
         )
         data = self._readDocument()
-        page, l = 1, 0
-        t = self._newpage()
+        pageno = 1
+        lineno = 0
+        page = self._newpage()
         for line in data:
-            t.textLine(line)
-            l += 1
-            if l == self.linesPerPage:
-                self.canvas.drawText(t)
+            page.textLine(line)
+            lineno += 1
+            if lineno == self.linesPerPage:
+                self.canvas.drawText(page)
                 self.canvas.showPage()
-                l = 0
-                page += 1
-                t = self._newpage()
-        if l > 0:
-            self.canvas.drawText(t)
+                lineno = 0
+                pageno += 1
+                page = self._newpage()
+        if lineno > 0:
+            self.canvas.drawText(page)
         else:
-            page -= 1
+            pageno -= 1
         self.canvas.save()
-        self._scribble("PDF document: %d pages" % page)
+        self._scribble("PDF document: %d pages" % pageno)
 
 
 parser = argparse.ArgumentParser()
