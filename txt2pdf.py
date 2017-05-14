@@ -71,27 +71,32 @@ class PDFCreator(object):
              - margins.top - margins.bottom - self.fontSize) / self.leading)
         self.filename = args.filename
         self.verbose = not args.quiet
+        self.breakOnBlanks = args.break_on_blanks
 
     def _process(self, data):
+        flen = os.fstat(data.fileno()).st_size
+        lineno = 0
+        read = 0
         for line in data:
+            lineno += 1
             if sys.version_info.major == 2:
-                yield line.decode('utf8').rstrip('\r\n')
+                read += len(line)
+                yield flen == read, lineno, line.decode('utf8').rstrip('\r\n')
             else:
-                yield line.rstrip('\r\n')
+                read += len(line.encode('utf8'))
+                yield flen == read, lineno, line.rstrip('\r\n')
 
     def _readDocument(self):
         with open(self.filename, 'r') as data:
-            lineno = 0
-            for line in self._process(data):
-                lineno += 1
+            for done, lineno, line in self._process(data):
                 if len(line) > self.charsPerLine:
                     self._scribble(
                         "Warning: wrapping line %d in %s" %
                         (lineno + 1, self.filename))
                     while len(line) > self.charsPerLine:
-                        yield line[:self.charsPerLine]
+                        yield done, line[:self.charsPerLine]
                         line = line[self.charsPerLine:]
-                yield line
+                yield done, line
 
     def _newpage(self):
         textobject = self.canvas.beginText()
@@ -110,11 +115,17 @@ class PDFCreator(object):
             "line and %d lines per page..." %
             (self.filename, self.charsPerLine, self.linesPerPage)
         )
-        data = self._readDocument()
+        if self.breakOnBlanks:
+            pageno = self._generateBob(self._readDocument())
+        else:
+            pageno = self._generatePlain(self._readDocument())
+        self._scribble("PDF document: %d pages" % pageno)
+
+    def _generatePlain(self, data):
         pageno = 1
         lineno = 0
         page = self._newpage()
-        for line in data:
+        for _, line in data:
             page.textLine(line)
             lineno += 1
             if lineno == self.linesPerPage:
@@ -128,7 +139,41 @@ class PDFCreator(object):
         else:
             pageno -= 1
         self.canvas.save()
-        self._scribble("PDF document: %d pages" % pageno)
+        return pageno
+
+    def _writeChunk(self, page, chunk):
+        for line in chunk:
+            page.textLine(line)
+
+    def _generateBob(self, data):
+        pageno = 1
+        lineno = 0
+        page = self._newpage()
+        chunk = list()
+        for last, line in data:
+            chunk.append(line)
+            if last or len(line.strip()) == 0:
+                self._writeChunk(page, chunk)
+                chunk = list()
+            lineno += 1
+            if lineno == self.linesPerPage:
+                self.canvas.drawText(page)
+                self.canvas.showPage()
+                lineno = 0
+                pageno += 1
+                page = self._newpage()
+        if lineno > 0:
+            self.canvas.drawText(page)
+            self.canvas.showPage()
+        else:
+            pageno -= 1
+        if len(chunk) > 0:
+            page = self._newpage()
+            self.canvas.drawText(page)
+            self.canvas.showPage()
+            pageno += 1
+        self.canvas.save()
+        return pageno
 
 
 parser = argparse.ArgumentParser()
@@ -210,6 +255,12 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Title of the PDF document')
+parser.add_argument(
+    '--break-on-blanks',
+    '-b',
+    action='store_true',
+    default=False,
+    help='Only break page on blank lines')
 
 args = parser.parse_args()
 
