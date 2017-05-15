@@ -72,6 +72,7 @@ class PDFCreator(object):
         self.filename = args.filename
         self.verbose = not args.quiet
         self.breakOnBlanks = args.break_on_blanks
+        self.encoding = args.encoding
 
     def _process(self, data):
         flen = os.fstat(data.fileno()).st_size
@@ -81,9 +82,10 @@ class PDFCreator(object):
             lineno += 1
             if sys.version_info.major == 2:
                 read += len(line)
-                yield flen == read, lineno, line.decode('utf8').rstrip('\r\n')
+                yield flen == \
+                    read, lineno, line.decode(self.encoding).rstrip('\r\n')
             else:
-                read += len(line.encode('utf8'))
+                read += len(line.encode(self.encoding))
                 yield flen == read, lineno, line.rstrip('\r\n')
 
     def _readDocument(self):
@@ -261,6 +263,12 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Only break page on blank lines')
+parser.add_argument(
+    '--encoding',
+    '-e',
+    type=str,
+    default='utf8',
+    help='Input encoding')
 
 args = parser.parse_args()
 
