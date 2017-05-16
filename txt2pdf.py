@@ -1,55 +1,67 @@
-#!/usr/bin/python
+#! /usr/bin/env python
 # -*- coding: utf-8 -*-
-
-appName = "txt2pdf (version 1.0)"
 
 import argparse
 
 import reportlab.lib.pagesizes
-from reportlab.pdfgen import canvas
+from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib.units import cm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-def readDocument(infile, nChars):
-    with open(infile, 'r') as f:
-        nbr = 0
-        for l0 in f:
-            l = l0.decode("utf-8")
-            nbr += 1
-            l = l[:-1] # remove trailing newspace \n character
-            if len(l) > nChars:
-                print("Warning: wrapping line "+str(nbr) + " in " + infile)
-                while len(l) > nChars:
-                    yield l[:nChars]
-                    l = l[nChars:]
-            yield l
+appName = "txt2pdf (version 1.0)"
 
-def newpage(c, font, fontsize, top, mleft, leading0, kerning):
-    textobject = c.beginText()
+
+def readDocument(infile, maxCharsPerLine):
+    with open(infile, 'r') as data:
+        lineno = 0
+        for line in data:
+            line = line.decode('utf8').rstrip('\r\n')
+            lineno += 1
+            if len(line) > maxCharsPerLine:
+                print("Warning: wrapping line %d in %s" % (lineno, infile))
+                while len(line) > maxCharsPerLine:
+                    yield line[:maxCharsPerLine]
+                    line = line[maxCharsPerLine:]
+            yield line
+
+
+def newpage(canvas, font, fontsize, top, mleft, leading0, kerning):
+    textobject = canvas.beginText()
     textobject.setFont(font, fontsize, leading=leading0)
     textobject.setTextOrigin(mleft, top)
-    textobject.setCharSpace( kerning )
+    textobject.setCharSpace(kerning)
     return textobject
 
-def document(data, outfile, font, fontsize, top, mleft, lpp, leading, kerning):
-    p,l = 1, 0
-    t = newpage(c, font, fontsize, top, mleft, leading, kerning)
+
+def document(
+        data,
+        outfile,
+        font,
+        fontsize,
+        top,
+        mleft,
+        lpp,
+        leading,
+        kerning,
+        canvas):
+    page, l = 1, 0
+    t = newpage(canvas, font, fontsize, top, mleft, leading, kerning)
     for line in data:
         t.textLine(line)
         l += 1
         if l == lpp:
-            c.drawText(t)
-            c.showPage()
+            canvas.drawText(t)
+            canvas.showPage()
             l = 0
-            p += 1
-            t = newpage(c, font, fontsize, top, mleft, leading, kerning)
+            page += 1
+            t = newpage(canvas, font, fontsize, top, mleft, leading, kerning)
     if l > 0:
-        c.drawText(t)
+        canvas.drawText(t)
     else:
-        p -= 1
-    c.save()
-    print("PDF document: "+str(p)+" pages")
+        page -= 1
+    canvas.save()
+    print("PDF document: " + str(page) + " pages")
 
 
 parser = argparse.ArgumentParser()
@@ -143,26 +155,31 @@ if args.font:
 else:
     fn = 'Courier'
 
-c = canvas.Canvas(outFile, pagesize=myPageSize)
-c.setCreator(appName)
+canvas = Canvas(outFile, pagesize=myPageSize)
+canvas.setCreator(appName)
 
 if author:
-    c.setAuthor(author)
+    canvas.setAuthor(author)
 if title:
-    c.setTitle(title)
+    canvas.setTitle(title)
 
 width = myPageSize[0] - mLeft - mRight
-w = c.stringWidth(".", fontName=fn, fontSize=fs)
-nChars = int( ( width + kerning ) / ( w + kerning ) )
+w = canvas.stringWidth(".", fontName=fn, fontSize=fs)
+charsPerLine = int((width + kerning) / (w + kerning))
 
 top = myPageSize[1] - mTop - fs
 if leading:
-    nLines = int ( ( leading + myPageSize[1] - mTop - mBottom - fs ) / (leading) )
+    linesPerPage = int(
+        (leading + myPageSize[1] - mTop - mBottom - fs) / (leading))
 else:
-    nLines = int ( ( 1.2*fs + myPageSize[1] - mTop - mBottom - fs ) / (1.2*fs) )
+    linesPerPage = int(
+        (1.2*fs + myPageSize[1] - mTop - mBottom - fs) / (1.2*fs))
 
-data = readDocument(args.filename, nChars)
+print(
+    "Printing '%s' with %d characters per line and %d lines per page..." %
+    (args.filename, charsPerLine, linesPerPage)
+)
 
-print("Printing '"+args.filename+"' with "+str(nChars)+" characters per line"
-      + " and "+str(nLines)+" lines per page...")
-document(data, outFile, fn, fs, top, mLeft, nLines, leading, kerning)
+document(
+    readDocument(args.filename, charsPerLine),
+    outFile, fn, fs, top, mLeft, linesPerPage, leading, kerning, canvas)
