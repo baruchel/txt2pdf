@@ -73,6 +73,10 @@ class PDFCreator(object):
         self.verbose = not args.quiet
         self.breakOnBlanks = args.break_on_blanks
         self.encoding = args.encoding
+        self.pageNumbering = args.page_numbers
+        if self.pageNumbering:
+            self.pageNumberPlacement = \
+               (pageWidth / 2, margins.bottom / 2)
 
     def _process(self, data):
         flen = os.fstat(data.fileno()).st_size
@@ -105,6 +109,11 @@ class PDFCreator(object):
         textobject.setFont(self.font, self.fontSize, leading=self.leading)
         textobject.setTextOrigin(self.margins.left, self.top)
         textobject.setCharSpace(self.kerning)
+        if self.pageNumbering:
+            self.canvas.drawString(
+                self.pageNumberPlacement[0],
+                self.pageNumberPlacement[1],
+                str(self.canvas.getPageNumber()))
         return textobject
 
     def _scribble(self, text):
@@ -153,17 +162,17 @@ class PDFCreator(object):
         page = self._newpage()
         chunk = list()
         for last, line in data:
+            if lineno == self.linesPerPage:
+                self.canvas.drawText(page)
+                self.canvas.showPage()
+                lineno = len(chunk)
+                pageno += 1
+                page = self._newpage()
+            lineno += 1
             chunk.append(line)
             if last or len(line.strip()) == 0:
                 self._writeChunk(page, chunk)
                 chunk = list()
-            lineno += 1
-            if lineno == self.linesPerPage:
-                self.canvas.drawText(page)
-                self.canvas.showPage()
-                lineno = 0
-                pageno += 1
-                page = self._newpage()
         if lineno > 0:
             self.canvas.drawText(page)
             self.canvas.showPage()
@@ -269,6 +278,11 @@ parser.add_argument(
     type=str,
     default='utf8',
     help='Input encoding')
+parser.add_argument(
+    '--page-numbers',
+    '-n',
+    action='store_true',
+    help='Add page numbers')
 
 args = parser.parse_args()
 
