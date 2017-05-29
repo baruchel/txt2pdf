@@ -34,6 +34,9 @@ class Margins(object):
     def bottom(self):
         return self._bottom * units.cm
 
+    def adjustLeft(self, width):
+        self._left -= width / units.cm
+
 
 class PDFCreator(object):
     appName = "txt2pdf (version 1.0)"
@@ -59,16 +62,20 @@ class PDFCreator(object):
             self.font = args.font
         self.kerning = args.kerning
         self.margins = margins
-        contentWidth = pageWidth - margins.left - margins.right
-        stringWidth = self.canvas.stringWidth(
-            ".", fontName=self.font, fontSize=self.fontSize)
-        self.charsPerLine = int(
-            (contentWidth + self.kerning) / (stringWidth + self.kerning))
-        self.top = pageHeight - margins.top - self.fontSize
         self.leading = (args.extra_vertical_space + 1.2) * self.fontSize
         self.linesPerPage = int(
             (self.leading + pageHeight
              - margins.top - margins.bottom - self.fontSize) / self.leading)
+        self.lppLen = len(str(self.linesPerPage))
+        fontWidth = self.canvas.stringWidth(
+            ".", fontName=self.font, fontSize=self.fontSize)
+        self.lineNumbering = args.line_numbers
+        if self.lineNumbering:
+            margins.adjustLeft(fontWidth * (self.lppLen + 2))
+        contentWidth = pageWidth - margins.left - margins.right
+        self.charsPerLine = int(
+            (contentWidth + self.kerning) / (fontWidth + self.kerning))
+        self.top = pageHeight - margins.top - self.fontSize
         self.filename = args.filename
         self.verbose = not args.quiet
         self.breakOnBlanks = args.break_on_blanks
@@ -152,9 +159,15 @@ class PDFCreator(object):
         self.canvas.save()
         return pageno
 
-    def _writeChunk(self, page, chunk):
-        for line in chunk:
-            page.textLine(line)
+    def _writeChunk(self, page, chunk, lineno):
+        if self.lineNumbering:
+            formatstr = '%%%dd: %%s' % self.lppLen
+            for index, line in enumerate(chunk):
+                page.textLine(
+                    formatstr % (lineno - len(chunk) + index + 1, line))
+        else:
+            for line in chunk:
+                page.textLine(line)
 
     def _generateBob(self, data):
         pageno = 1
@@ -171,7 +184,7 @@ class PDFCreator(object):
             lineno += 1
             chunk.append(line)
             if last or len(line.strip()) == 0:
-                self._writeChunk(page, chunk)
+                self._writeChunk(page, chunk, lineno)
                 chunk = list()
         if lineno > 0:
             self.canvas.drawText(page)
@@ -283,6 +296,10 @@ parser.add_argument(
     '-n',
     action='store_true',
     help='Add page numbers')
+parser.add_argument(
+    '--line-numbers',
+    action='store_true',
+    help='Add line numbers')
 
 args = parser.parse_args()
 
