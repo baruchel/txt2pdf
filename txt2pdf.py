@@ -72,11 +72,17 @@ class PDFCreator(object):
         self.filename = args.filename
         self.verbose = not args.quiet
 
+    def _process(self, data):
+        for line in data:
+            if sys.version_info.major == 2:
+                yield line.decode('utf8').rstrip('\r\n')
+            else:
+                yield line.rstrip('\r\n')
+
     def _readDocument(self):
         with open(self.filename, 'r') as data:
             lineno = 0
-            for line in data:
-                line = line.decode('utf8').rstrip('\r\n')
+            for line in self._process(data):
                 lineno += 1
                 if len(line) > self.charsPerLine:
                     self._scribble(
