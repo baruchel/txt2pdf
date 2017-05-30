@@ -49,7 +49,6 @@ The following fonts have been tested with success:
   * SImPL
   * Pragmata Pro
   * Hack
-  * MPlus
 
 The Type 1 font "Courier10PitchBT-Roman" can be used by hacking the code.
 
