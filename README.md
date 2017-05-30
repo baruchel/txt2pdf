@@ -47,12 +47,11 @@ The following fonts have been tested with success:
   * APL385
   * APLX Unicode
   * SImPL
+  * Pragmata Pro
+  * Hack
+  * MPlus
 
 The Type 1 font "Courier10PitchBT-Roman" can be used by hacking the code.
-
-The following True Type fonts don't work:
-
-  * Pragmata Pro
 
 No Open Type font work, which includes:
 
