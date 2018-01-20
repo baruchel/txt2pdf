@@ -7,6 +7,7 @@ from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib import units
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+import re
 import sys
 import os
 
@@ -144,8 +145,22 @@ class PDFCreator(object):
         lineno = 0
         page = self._newpage()
         for _, line in data:
-            page.textLine(line)
             lineno += 1
+
+            # Handle form feed characters.
+            (line, pageBreakCount) = re.subn(r'\f', r'', line)
+            if pageBreakCount > 0 and lineno >= args.minimum_page_length:
+                for _ in range(pageBreakCount):
+                    self.canvas.drawText(page)
+                    self.canvas.showPage()
+                    lineno = 0
+                    pageno += 1
+                    page = self._newpage()
+                    if args.minimum_page_length > 0:
+                        break
+
+            page.textLine(line)
+
             if lineno == self.linesPerPage:
                 self.canvas.drawText(page)
                 self.canvas.showPage()
@@ -230,6 +245,12 @@ parser.add_argument(
     '-m',
     default='A4',
     help='Select the size of the page (A4, A3, etc.)')
+parser.add_argument(
+    '--minimum-page-length',
+    '-M',
+    type=int,
+    default=10,
+    help='The minimum number of lines before a form feed character will change the page')
 parser.add_argument(
     '--landscape',
     '-l',
