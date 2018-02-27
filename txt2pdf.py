@@ -49,12 +49,18 @@ class PDFCreator(object):
                 (pageWidth, pageHeight))
         self.author = args.author
         self.title = args.title
+        self.keywords = args.keywords
+        self.subject = args.subject
         self.canvas = Canvas(args.output, pagesize=(pageWidth, pageHeight))
         self.canvas.setCreator(self.appName)
         if len(args.author) > 0:
             self.canvas.setAuthor(args.author)
         if len(args.title) > 0:
             self.canvas.setTitle(args.title)
+        if len(args.subject) > 0:
+            self.canvas.setSubject(args.subject)
+        if len(args.keywords) > 0:
+            self.canvas.setKeywords(args.keywords)
         self.fontSize = args.font_size
         if args.font not in ('Courier'):
             self.font = 'myFont'
@@ -300,6 +306,8 @@ parser.add_argument(
     action='store_true',
     default=False,
     help='Title of the PDF document')
+parser.add_argument('--subject',default='',help='Subject of the PDF document')
+parser.add_argument('--keywords',default='',help='Keywords of the PDF document')
 parser.add_argument(
     '--break-on-blanks',
     '-b',
