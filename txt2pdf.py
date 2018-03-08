@@ -305,7 +305,7 @@ parser.add_argument(
     '-q',
     action='store_true',
     default=False,
-    help='Title of the PDF document')
+    help='Hide detailed information')
 parser.add_argument('--subject',default='',help='Subject of the PDF document')
 parser.add_argument('--keywords',default='',help='Keywords of the PDF document')
 parser.add_argument(
