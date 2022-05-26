@@ -12,6 +12,30 @@ import sys
 import os
 
 
+def align_up(x, n):
+    """Round up"""
+    return ((x+n-1)//n)*n
+
+
+def expand_tabs(s, tab_size=4):
+    # Convert tabs to spaces, based on position in string. I.e. do not naively replace a single tab with fixed tab_size number spaces
+    pos = 0
+    result = []
+    for c in s:
+        if c == '\t':
+            aligned = align_up(pos, tab_size)
+            if pos % 4 != 0:
+                num_spaces = aligned - pos
+            else:
+                num_spaces = tab_size
+            co = ' ' * num_spaces
+            pos += num_spaces
+        else:
+            co = c
+            pos += 1
+        result.append(co)
+    return ''.join(result)
+
 class Margins(object):
     def __init__(self, right, left, top, bottom):
         self._right = right
@@ -88,6 +112,7 @@ class PDFCreator(object):
         self.breakOnBlanks = args.break_on_blanks
         self.encoding = args.encoding
         self.pageNumbering = args.page_numbers
+        self.tabSize = int(args.tab_size)
         if self.pageNumbering:
             self.pageNumberPlacement = \
                (pageWidth / 2, margins.bottom / 2)
@@ -95,16 +120,17 @@ class PDFCreator(object):
     def _process(self, data):
         flen = os.fstat(data.fileno()).st_size
         lineno = 0
-        read = 0
+        read = 0  # number of bytes read
         for line in data:
             lineno += 1
             if sys.version_info.major == 2:
                 read += len(line)
-                yield flen == \
-                    read, lineno, line.decode(self.encoding).rstrip('\r\n')
+                line = line.decode(self.encoding)
             else:
                 read += len(line.encode(self.encoding))
-                yield flen == read, lineno, line.rstrip('\r\n')
+            if self.tabSize:
+                line = expand_tabs(line, self.tabSize)
+            yield flen == read, lineno, line.rstrip('\r\n')
 
     def _readDocument(self):
         with open(self.filename, 'r') as data:
@@ -329,6 +355,11 @@ parser.add_argument(
     '--line-numbers',
     action='store_true',
     help='Add line numbers')
+parser.add_argument(
+    '--tab-size',
+    type=int,
+    default=0,
+    help='If not zero, replace tabs with with tab-size number of spaces')
 
 args = parser.parse_args()
 
