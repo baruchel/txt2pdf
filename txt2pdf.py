@@ -12,6 +12,9 @@ import sys
 import os
 
 
+version_tuple = version_info = (1, 0, 1)
+version = version_string = __version__ = '%d.%d.%d' % version_tuple
+
 def align_up(x, n):
     """Round up"""
     return ((x+n-1)//n)*n
@@ -64,7 +67,7 @@ class Margins(object):
 
 
 class PDFCreator(object):
-    appName = "txt2pdf (version 1.0)"
+    appName = "txt2pdf (version %s)" % __version__
 
     def __init__(self, args, margins):
         pageWidth, pageHeight = reportlab.lib.pagesizes.__dict__[args.media]
