@@ -116,6 +116,7 @@ class PDFCreator(object):
         if self.pageNumbering:
             self.pageNumberPlacement = \
                (pageWidth / 2, margins.bottom / 2)
+        self.minimum_page_length = args.minimum_page_length
 
     def _process(self, data):
         flen = os.fstat(data.fileno()).st_size
@@ -181,14 +182,14 @@ class PDFCreator(object):
 
             # Handle form feed characters.
             (line, pageBreakCount) = re.subn(r'\f', r'', line)
-            if pageBreakCount > 0 and lineno >= args.minimum_page_length:
+            if pageBreakCount > 0 and lineno >= self.minimum_page_length:
                 for _ in range(pageBreakCount):
                     self.canvas.drawText(page)
                     self.canvas.showPage()
                     lineno = 0
                     pageno += 1
                     page = self._newpage()
-                    if args.minimum_page_length > 0:
+                    if self.minimum_page_length > 0:
                         break
 
             page.textLine(line)
@@ -361,10 +362,22 @@ parser.add_argument(
     default=0,
     help='If not zero, replace tabs with with tab-size number of spaces')
 
-args = parser.parse_args()
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
 
-PDFCreator(args, Margins(
-    args.margin_right,
-    args.margin_left,
-    args.margin_top,
-    args.margin_bottom)).generate()
+    print('Python %s on %s' % (sys.version, sys.platform))
+
+    args = parser.parse_args()
+
+    PDFCreator(args, Margins(
+        args.margin_right,
+        args.margin_left,
+        args.margin_top,
+        args.margin_bottom)).generate()
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
