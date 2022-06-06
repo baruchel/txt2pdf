@@ -116,6 +116,7 @@ class PDFCreator(object):
         self.encoding = args.encoding
         self.pageNumbering = args.page_numbers
         self.tabSize = int(args.tab_size)
+        self.tabReplacement = args.tab_replacement
         if self.pageNumbering:
             self.pageNumberPlacement = \
                (pageWidth / 2, margins.bottom / 2)
@@ -132,6 +133,8 @@ class PDFCreator(object):
                 line = line.decode(self.encoding)
             else:
                 read += len(line.encode(self.encoding))
+            if self.tabReplacement:
+                line = line.replace('\t', self.tabReplacement)
             if self.tabSize:
                 line = expand_tabs(line, self.tabSize)
             yield flen == read, lineno, line.rstrip('\r\n')
@@ -364,6 +367,9 @@ parser.add_argument(
     type=int,
     default=0,
     help='If not zero, replace tabs with with tab-size number of spaces')
+parser.add_argument(
+    '--tab-replacement',
+    help='Replace tab with this character string')
 
 def main(argv=None):
     if argv is None:
