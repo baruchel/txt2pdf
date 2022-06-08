@@ -34,6 +34,25 @@ You can specify your own TTF font:
 
 Other options allow to set the margins, and to adjust typographical settings (horizontal space between consecutive characters or vertical space between lines). You may also include the name of the author of the document or its title in the properties of the PDF document.
 
+### Character replacement And Translation
+
+The `--character-replacement` flag takes the filename of a [json](https://www.json.org/) file that maps single characters into replacement strings (potentially single characters but could be several).
+
+Example file, that replaces tabs with a multi-character string and essentially removes form-feeds (replaces with an empty string):
+
+    {
+        "\t": "->",
+        "\f": ""
+    }
+
+The key values can either be strings or numerics, where the numeric is the Unicode point in **decimal**. For example, for the form-feed character the numeric 12 could be used instead:
+
+    {
+        "\t": "->",
+        12: ""
+    }
+
+
 Fonts
 -----
 
