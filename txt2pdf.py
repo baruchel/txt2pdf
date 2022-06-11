@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import argparse
+import json
 import reportlab.lib.pagesizes
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.lib import units
@@ -14,6 +15,17 @@ import os
 
 version_tuple = version_info = (1, 0, 1)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
+
+
+try:
+    basestring
+    py_v2 = True
+    py_v3 = False
+except NameError:
+    basestring = str
+    py_v2 = False
+    py_v3 = True
+
 
 def align_up(x, n):
     """Round up"""
@@ -121,6 +133,20 @@ class PDFCreator(object):
             self.pageNumberPlacement = \
                (pageWidth / 2, margins.bottom / 2)
         self.minimum_page_length = args.minimum_page_length
+        if args.character_replacement:
+            with open(args.character_replacement, 'rb') as f:
+                json_data_str = f.read()
+                self.character_replacement = json.loads(json_data_str)
+                # massage data into a form string.translate() will accept,
+                # i.e. convert keys that are strings into decimal
+                for translate_key in self.character_replacement:
+                    if isinstance(translate_key, basestring):
+                        new_translate_key = ord(translate_key)  # assume it is a single character
+                        self.character_replacement[new_translate_key] = self.character_replacement[translate_key]
+                        del self.character_replacement[translate_key]
+                print(json.dumps(self.character_replacement, indent=4))  # debug
+        else:
+            self.character_replacement = {}
 
     def _process(self, data):
         flen = os.fstat(data.fileno()).st_size
@@ -133,6 +159,8 @@ class PDFCreator(object):
                 line = line.decode(self.encoding)
             else:
                 read += len(line.encode(self.encoding))
+            if self.character_replacement:
+                line = line.translate(self.character_replacement)  # FIXME won't work with Python 2.x when key outside of latin1 range
             if self.tabReplacement:
                 line = line.replace('\t', self.tabReplacement)
             if self.tabSize:
@@ -370,6 +398,10 @@ parser.add_argument(
 parser.add_argument(
     '--tab-replacement',
     help='Replace tab with this character string')
+parser.add_argument(
+    '--character-replacement',
+    '-c',
+    help='Filename of json file containing mappings of replacement/translations characters')
 
 def main(argv=None):
     if argv is None:
