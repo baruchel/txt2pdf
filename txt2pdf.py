@@ -154,7 +154,7 @@ class PDFCreator(object):
         read = 0  # number of bytes read
         for line in data:
             lineno += 1
-            if sys.version_info.major == 2:
+            if py_v2 == 2:
                 read += len(line)
                 line = line.decode(self.encoding)
             else:
