@@ -13,7 +13,7 @@ import sys
 import os
 
 
-version_tuple = version_info = (1, 0, 1)
+version_tuple = version_info = (1, 0, 2)
 version = version_string = __version__ = '%d.%d.%d' % version_tuple
 
 
