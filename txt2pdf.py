@@ -39,7 +39,7 @@ def expand_tabs(s, tab_size=4):
     for c in s:
         if c == '\t':
             aligned = align_up(pos, tab_size)
-            if pos % 4 != 0:
+            if pos % tab_size != 0:
                 num_spaces = aligned - pos
             else:
                 num_spaces = tab_size
@@ -121,6 +121,7 @@ class PDFCreator(object):
         contentWidth = pageWidth - margins.left - margins.right
         self.charsPerLine = int(
             (contentWidth + self.kerning) / (fontWidth + self.kerning))
+        self.charsWidestLineSeen = 0
         self.top = pageHeight - margins.top - self.fontSize
         self.filename = args.filename
         self.verbose = not args.quiet
@@ -129,6 +130,7 @@ class PDFCreator(object):
         self.pageNumbering = args.page_numbers
         self.tabSize = int(args.tab_size)
         self.tabReplacement = args.tab_replacement
+        self.tabSeen = False
         if self.pageNumbering:
             self.pageNumberPlacement = \
                (pageWidth / 2, margins.bottom / 2)
@@ -163,14 +165,19 @@ class PDFCreator(object):
                 line = line.translate(self.character_replacement)  # FIXME won't work with Python 2.x when key outside of latin1 range
             if self.tabReplacement:
                 line = line.replace('\t', self.tabReplacement)
-            if self.tabSize:
+            elif self.tabSize:
                 line = expand_tabs(line, self.tabSize)
+            elif (not self.tabSeen) and '\t' in line:
+                self.tabSeen = True
             yield flen == read, lineno, line.rstrip('\r\n')
 
     def _readDocument(self):
         with open(self.filename, 'r') as data:
             for done, lineno, line in self._process(data):
-                if len(line) > self.charsPerLine:
+                lineLen = len(line)
+                if lineLen > self.charsWidestLineSeen:
+                    self.charsWidestLineSeen = lineLen
+                if lineLen > self.charsPerLine:
                     self._scribble(
                         "Warning: wrapping line %d in %s" %
                         (lineno + 1, self.filename))
@@ -205,6 +212,10 @@ class PDFCreator(object):
             pageno = self._generateBob(self._readDocument())
         else:
             pageno = self._generatePlain(self._readDocument())
+        if self.charsWidestLineSeen > self.charsPerLine:
+            self._scribble("Page is %d characters wide; to avoid wrapping, need at least %d" % (self.charsPerLine, self.charsWidestLineSeen))
+        if self.tabSeen:
+            self._scribble("Warning: Tab characters seen, but no tab-size or tab-replacement specified")
         self._scribble("PDF document: %d pages" % pageno)
 
     def _generatePlain(self, data):
