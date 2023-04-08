@@ -156,11 +156,8 @@ class PDFCreator(object):
         read = 0  # number of bytes read
         for line in data:
             lineno += 1
-            if py_v2:
-                read += len(line)
-                line = line.decode(self.encoding)
-            else:
-                read += len(line.encode(self.encoding))
+            read += len(line)
+            line = line.decode(self.encoding)
             if self.character_replacement:
                 line = line.translate(self.character_replacement)  # FIXME won't work with Python 2.x when key outside of latin1 range
             if self.tabReplacement:
@@ -172,7 +169,7 @@ class PDFCreator(object):
             yield flen == read, lineno, line.rstrip('\r\n')
 
     def _readDocument(self):
-        with open(self.filename, 'r') as data:
+        with open(self.filename, 'rb') as data:
             for done, lineno, line in self._process(data):
                 lineLen = len(line)
                 if lineLen > self.charsWidestLineSeen:
